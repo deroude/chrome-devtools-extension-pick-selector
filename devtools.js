@@ -1,47 +1,54 @@
 // credits to https://gist.github.com/karlgroves/7544592
 function getDomPath(el) {
+
     function name(el) {
         return el.nodeName.toLowerCase() + (el.shadowRoot ? '::shadowRoot' : '');
     }
 
-    var stack = [];
-    while (el.parentNode != null) {
-        var sibCount = 0;
-        var sibIndex = 0;
-        for (var i = 0; i < el.parentNode.childNodes.length; i++) {
-            var sib = el.parentNode.childNodes[i];
-            if (sib.nodeName == el.nodeName) {
-                if (sib === el) {
-                    sibIndex = sibCount;
+    function recurse(el) {
+        var stack = [];
+        while (el.parentNode) {
+            var sibCount = 0;
+            var sibIndex = 0;
+            for (var i = 0; i < el.parentNode.childNodes.length; i++) {
+                var sib = el.parentNode.childNodes[i];
+                if (sib.nodeName == el.nodeName) {
+                    if (sib === el) {
+                        sibIndex = sibCount;
+                    }
+                    sibCount++;
                 }
-                sibCount++;
+            }
+            if (el.hasAttribute('id') && el.id !== '') {
+                stack.unshift(name(el) + '#' + el.id);
+            } else if (el.hasAttribute('title') && el.title !== '') {
+                stack.unshift(name(el) + '[title=' + el.id + ']');
+            } else if (el.children.length === 0 && el.nodeName.toLowerCase() !== 'style' && el.innerText && el.innerText !== '') {
+                stack.unshift(name(el) + ':contains(' + el.innerText + ')')
+            } else if (el.hasAttribute('class') && el.className !== '') {
+                stack.unshift(name(el) + '.' + el.className.split(' ').join('.'));
+            } else if (sibCount > 1) {
+                stack.unshift(name(el) + ':eq(' + sibIndex + ')');
+            } else {
+                stack.unshift(name(el));
+            }
+            el = el.parentNode;
+        }
+        if (el instanceof ShadowRoot) {
+            return [...recurse(el.host), ...stack];
+        }
+        //found on https://stackoverflow.com/questions/935127/how-to-access-parent-iframe-from-javascript
+        var arrFrames = parent.document.getElementsByTagName('IFRAME');;
+        for (var i = 0; i < arrFrames.length; i++) {
+            if (arrFrames[i].contentDocument === el) {
+                stack.unshift("iframe#" + arrFrames[i].id);
+                break;
             }
         }
-        if (el.hasAttribute('id') && el.id !== '') {
-            stack.unshift(name(el) + '#' + el.id);
-        } else if (el.hasAttribute('title') && el.title !== '') {
-            stack.unshift(name(el) + '[title=' + el.id + ']');
-        } else if (el.children.length === 0 && el.innerText && el.innerText !== '') {
-            stack.unshift(name(el) + ':contains(' + el.innerText + ')')
-        } else if (el.hasAttribute('class') && el.className !== '') {
-            stack.unshift(name(el) + '.' + el.className.split(' ').join('.'));
-        } else if (sibCount > 1) {
-            stack.unshift(name(el) + ':eq(' + sibIndex + ')');
-        } else {
-            stack.unshift(name(el));
-        }
-        el = el.parentNode;
+        return stack;
     }
-    // stack = stack.slice(1);// removes the html element
-    //found on https://stackoverflow.com/questions/935127/how-to-access-parent-iframe-from-javascript
-    var arrFrames = parent.document.getElementsByTagName('IFRAME');;
-    for (var i = 0; i < arrFrames.length; i++) {
-        if (arrFrames[i].contentDocument === el) {
-            stack.unshift("iframe#" + arrFrames[i].id);
-            break;
-        }
-    }
-    return stack;
+
+    return recurse(el);
 }
 
 
@@ -56,7 +63,8 @@ chrome.devtools.panels.elements.createSidebarPane("FormulaDB",
                 var foundId = false;
                 for (var i = raw.length - 1; i > 1; i--) {
                     if (raw[i].indexOf('#') > -1) {
-                        fstack = [...fstack, ...raw.slice(i)];
+                        fstack = [...fstack, ...raw.slice(0,i).filter(r => r.endsWith('::shadowRoot')), ...raw.slice(i)];
+                        console.log(fstack);
                         foundId = true;
                         break;
                     }
