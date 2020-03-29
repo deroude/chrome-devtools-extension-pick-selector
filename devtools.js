@@ -63,7 +63,7 @@ chrome.devtools.panels.elements.createSidebarPane("FormulaDB",
                 var foundId = false;
                 for (var i = raw.length - 1; i > 1; i--) {
                     if (raw[i].indexOf('#') > -1) {
-                        fstack = [...fstack, ...raw.slice(0,i).filter(r => r.endsWith('::shadowRoot')), ...raw.slice(i)];
+                        fstack = [...fstack, ...raw.slice(0,i).filter(r => r.indexOf('::shadowRoot')>-1), ...raw.slice(i)];
                         console.log(fstack);
                         foundId = true;
                         break;
